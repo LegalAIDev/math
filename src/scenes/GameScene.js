@@ -190,11 +190,12 @@ class GameScene extends Phaser.Scene {
   /* ---- main loop -------------------------------------------------------- */
   update(time, delta) {
     if (this.paused || this.finished) return;
-    if (this.clock < this.freezeUntil) return;          // hit-stop
 
     const dt = Math.min(delta / 1000, 0.04);
     this.clock += dt * 1000;
     const now = this.clock;
+
+    if (now < this.freezeUntil) return;                 // hit-stop
 
     this.scrollBackground(dt);
     this.updatePlayer(dt, now);
