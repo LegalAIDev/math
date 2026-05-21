@@ -31,6 +31,10 @@ const state = {
   obstacles: [],
   pickups: [],
   pendingPurchase: null,
+  coinStreak: 0,
+  mathStreak: 0,
+  lastCoinAt: 0,
+  comboBonusUntil: 0,
 };
 
 const upgrades = [
@@ -109,11 +113,16 @@ submitBtn.addEventListener('click', (e) => {
       state.coins -= upgrade.cost;
       upgrade.bought += 1;
       upgrade.apply();
-      feedbackEl.textContent = `Correct! Purchased ${upgrade.name}.`;
+      state.mathStreak += 1;
+      const streakBonus = Math.min(6, state.mathStreak);
+      state.coins += streakBonus;
+      state.comboBonusUntil = performance.now() + 4000;
+      feedbackEl.textContent = `Correct! Purchased ${upgrade.name}. +${streakBonus} streak coins`;
       feedbackEl.className = 'feedback good';
-      setTimeout(() => closeDialog(), 600);
+      setTimeout(() => closeDialog(), 650);
     }
   } else {
+    state.mathStreak = 0;
     feedbackEl.textContent = `Not quite. Hint: ${problem.hint}`;
     feedbackEl.className = 'feedback bad';
   }
@@ -237,10 +246,11 @@ function update() {
   for (const o of state.obstacles) {
     if (overlaps(playerBox, o) && performance.now() > state.invulnUntil) {
       state.lives -= 1;
+      state.coinStreak = 0;
       state.invulnUntil = performance.now() + 900;
       if (state.lives <= 0) {
         alert(`Game over! Distance: ${Math.floor(state.distance)}m`);
-        Object.assign(state, { distance: 0, coins: 0, lives: 3, speed: 4, obstacles: [], pickups: [] });
+        Object.assign(state, { distance: 0, coins: 0, lives: 3, speed: 4, obstacles: [], pickups: [], coinStreak: 0, mathStreak: 0, comboBonusUntil: 0, lastCoinAt: 0 });
       }
       break;
     }
@@ -248,7 +258,15 @@ function update() {
 
   state.pickups = state.pickups.filter((c) => {
     const hit = Math.hypot((c.x - (p.x + p.w / 2)), (c.y - (p.y + 18))) < 20;
-    if (hit) state.coins += Math.round(1 * state.coinMultiplier);
+    if (hit) {
+      const now = performance.now();
+      state.coinStreak = (now - state.lastCoinAt <= 1400) ? state.coinStreak + 1 : 1;
+      state.lastCoinAt = now;
+      const streakStep = Math.floor(state.coinStreak / 5);
+      const comboMult = now < state.comboBonusUntil ? 1.5 : 1;
+      const earned = Math.max(1, Math.round((1 + streakStep) * state.coinMultiplier * comboMult));
+      state.coins += earned;
+    }
     return !hit;
   });
 }
@@ -360,6 +378,16 @@ function draw() {
 
   state.obstacles.forEach(drawObstacle);
   state.pickups.forEach(drawCoin);
+
+
+  if (state.coinStreak >= 3 || state.mathStreak >= 2) {
+    ctx.fillStyle = 'rgba(0,0,0,.35)';
+    ctx.fillRect(16, 16, 230, 56);
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 18px sans-serif';
+    ctx.fillText(`Coin streak: ${state.coinStreak}`, 26, 40);
+    ctx.fillText(`Math streak: ${state.mathStreak}`, 26, 63);
+  }
 
   if (state.paused) {
     ctx.fillStyle = 'rgba(0,0,0,.4)';
