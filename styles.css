@@ -30,7 +30,7 @@ html, body {
 /* Phaser drops a <canvas> in here; keep it crisp and centered. */
 #game canvas {
   display: block;
-  max-width: 100%;
+  max-width: min(100%, 850px);
   max-height: 100%;
 }
 
